@@ -1,0 +1,34 @@
+---
+- name: Initialize git repo
+  command: git init /srv/www
+  become: yes
+  become_user: www-data
+
+- name: Git add
+  command: git add .
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data
+
+- name: Git commit
+  command: git commit -m 'Initial commit'
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data
+
+- name: Add remote repo
+  command: git remote add origin "{{ git_repo }}"
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data
+
+- name: Git push to remote
+  command: git push -u origin master
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data
+

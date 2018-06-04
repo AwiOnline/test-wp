@@ -1,0 +1,32 @@
+    - name: run client-side smoke test
+      hosts:
+      - wordpress
+      connection: local
+      gather_facts: no
+      tasks:
+    
+        - name:  "Notify the smoke tests"
+          debug:
+            msg: "Trigger smoke tests"
+          notify: "smoke"
+          changed_when: true
+    
+      handlers:
+    
+        - name: "Get homepages"
+          environment:
+            no_proxy: "{{ server_hostname }}"
+          uri:
+            url: "http://{{ server_hostname }}/"
+            return_content: yes
+            follow_redirects: all
+            status_code: 200
+            validate_certs: no
+          register: homepage
+          listen: "smoke"
+    
+        - name: "Ensure that the homepage serves real content"
+          assert:
+            that:
+              - "'Just another WordPress site' in homepage.content"
+          listen: "smoke"

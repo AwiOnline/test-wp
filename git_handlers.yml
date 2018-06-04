@@ -1,0 +1,4 @@
+---
+-   name: restart web server
+    action: command echo "do something"
+    become: yes

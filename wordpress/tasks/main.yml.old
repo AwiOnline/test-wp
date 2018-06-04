@@ -1,0 +1,73 @@
+---
+# tasks file for wordpress
+- name: Create webroot
+  file:
+    state: directory
+    path: /srv/www/{{server_hostname}}
+    owner: root
+    group: root
+    mode: 0755
+  become: yes
+
+- name: Create logs dir
+  file:
+    state: directory
+    path: /srv/www/{{server_hostname}}/logs
+    owner: www-data
+    group: www-data
+    mode: 0755
+  become: yes
+
+
+- name: Check if WordPress directory exists in /srv/www
+  stat: path=/srv/www/{{server_hostname}}
+  register: check_path
+
+- name: Download and extract WordPress
+  unarchive:
+    src: https://wordpress.org/wordpress-{{ wp_version }}.tar.gz
+    dest: /srv/www/{{server_hostname}} 
+    owner: www-data
+    group: www-data
+    remote_src: yes
+  become: yes
+  when: check_path.stat.exists
+
+#- name: Move WordPress install files
+#  shell: mv /tmp/wordpress/* /srv/www/{{server_hostname}}/htdocs
+#  become: yes
+#  when: check_path.stat.exists
+
+#- name: Change owner
+#  file: dest=/srv/www/{{server_hostname}}/htdocs owner=www-data group=www-data recurse=yes
+#  become: yes 
+
+- name: Fetch random salts for WordPress config
+  local_action: command curl https://api.wordpress.org/secret-key/1.1/salt/
+  register: "wp_salt"
+  become: no
+
+- name: Add wp-config
+  template: "src=wp-config.php dest=/srv/www/{{server_hostname}}/wp-config.php"
+  become: yes
+
+- name: Update WordPress config file
+  lineinfile:
+    dest: "/srv/www/{{server_hostname}}/wp-config.php"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - {'regexp': "define\\('DB_NAME', '(.)+'\\);", 'line': "define('DB_NAME', '{{wp_db_name}}');"}
+    - {'regexp': "define\\('DB_USER', '(.)+'\\);", 'line': "define('DB_USER', '{{wp_db_user}}');"}
+    - {'regexp': "define\\('DB_PASSWORD', '(.)+'\\);", 'line': "define('DB_PASSWORD', '{{wp_db_password}}');"}
+  become: yes
+
+- name: Install WP-CLI
+  get_url:
+    url: "{{ wp_cli_phar_url }}"
+    dest: "{{ wp_cli_bin_path }}"
+    force: true
+    owner: root
+    group: root
+    mode: 0755
+  become: yes

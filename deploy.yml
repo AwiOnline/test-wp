@@ -1,0 +1,16 @@
+---
+-   hosts: wordpress
+    vars_files:
+        - git_vars.yml
+    gather_facts: false
+    become: true
+    become_user: www-data
+
+    tasks:
+        - name: Pull sources from the repository.
+          git: repo={{ git_repo }} dest=/srv/www version=master
+          notify:
+            - restart web server
+
+    handlers:
+      - include : git_handlers.yml

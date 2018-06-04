@@ -1,0 +1,100 @@
+---
+- name: Create webroot
+  file:
+    state: directory
+    path: /srv/www/{{server_hostname}}
+    owner: root
+    group: root
+    mode: 0755
+  become: yes
+
+- name: Create logs directory
+  file:
+    state: directory
+    path: /srv/www/logs
+    owner: root
+    group: root
+    mode: 0755
+  become: yes
+
+- name: Install WP-CLI
+  get_url:
+    url: "{{ wp_cli_phar_url }}"
+    dest: "{{ wp_cli_bin_path }}"
+    force: true
+    owner: root
+    group: root
+    mode: 0755
+  become: yes
+
+- name: Download WordPress
+  command: wp --allow-root core download
+           --path="/srv/www/{{ server_hostname }}"
+  become: yes
+
+- name: Config WordPress site
+  command: wp --allow-root config create
+           --path="/srv/www/{{server_hostname}}"
+           --dbname="{{ wp_db_name }}"
+           --dbuser="{{ wp_db_user }}"
+           --dbpass="{{ wp_db_password }}"
+  become: yes
+
+- name: Config WordPress site
+  command: wp --allow-root core install
+           --path="/srv/www/{{server_hostname}}"
+           --url="http://{{ server_hostname }}"
+           --title="{{ server_hostname }}"
+           --admin_user="{{ admin_username }}"
+           --admin_password="{{ admin_password }}"
+           --admin_email="{{ admin_email }}"
+  become: yes
+
+- name: Change directory ownership
+  file: dest=/srv/www owner=www-data group=www-data mode=u=rwX,g=rX,o=rX recurse=yes
+  become: yes
+
+- name: Move wp-config.php outside htdocs
+  command: mv  /srv/www/{{server_hostname}}/wp-config.php /srv/www/
+  become: yes
+
+- name: Initialize git repo
+  command: git init /srv/www
+  become: yes
+  become_user: www-data
+
+- name: Ensure github.com is a known host
+  lineinfile:
+    dest: /srv/www/.gitignore
+    create: yes
+    state: present
+    line: "logs/"
+  become: yes
+
+- name: Git add
+  command: git add .
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data
+
+- name: Git commit
+  command: git commit -m 'Initial commit'
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data
+
+- name: Add remote repo
+  command: git remote add origin "{{ git_repo }}"
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data
+
+- name: Git push to remote
+  command: git push -u origin master
+  args:
+    chdir: /srv/www/
+  become: yes
+  become_user: www-data

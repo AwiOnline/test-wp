@@ -1,0 +1,3 @@
+handlers:
+  - name: Restart service httpd, in all cases
+    service: name=nginx state=restarted
